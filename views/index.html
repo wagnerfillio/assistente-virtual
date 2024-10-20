@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Assistente Virtual</title>
+    <link
+      rel="icon"
+      type="image/png"
+      href="./favicon-48x48.png"
+      sizes="48x48"
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="./favicon.ico" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="./apple-touch-icon.png"
+    />
+    <meta name="apple-mobile-web-app-title" content="Assistente Vonix" />
+    <link rel="manifest" href="./site.webmanifest" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css"
+    />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css"
+    />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f0f0f0;
+        padding: 0;
+        height: 100vh;
+      }
+
+      .chat-container {
+        width: 400px;
+        max-width: 100%;
+        height: 80vh;
+      }
+
+      .messages {
+        height: 100%;
+        padding: 15px;
+        overflow-y: auto;
+        background-image: url(https://i.pinimg.com/564x/7b/1d/8e/7b1d8e865da2c11b788a21a0fb51d542.jpg);
+        background-size: cover;
+        background: #f1f1f1;
+      }
+
+      .message {
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 5px;
+        max-width: 80%;
+      }
+
+      .message.user {
+        color: white;
+        background-color: #3a12ff;
+        background-image: linear-gradient(#faaf00, #ff2e2e, #3a12ff);
+        background-attachment: fixed;
+        border-left: 2px solid #fff;
+        border-right: 2px solid #fff;
+
+        margin-left: auto;
+      }
+
+      .message.gpt {
+        background-color: #e2e3e5;
+      }
+
+      .typing-indicator {
+        margin: 10px 0;
+        display: flex;
+        align-items: center;
+      }
+
+      .dot {
+        height: 10px;
+        width: 10px;
+        margin: 0 2px;
+        background-color: #6c757d;
+        border-radius: 50%;
+        animation: bounce 0.6s infinite alternate;
+      }
+
+      .dot:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+
+      .dot:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+
+      @keyframes bounce {
+        from {
+          transform: translateY(0);
+        }
+        to {
+          transform: translateY(-10px);
+        }
+      }
+
+      #user-input {
+        margin-right: 10px;
+      }
+
+      .btn-transparent {
+        background: none;
+        border: none;
+        cursor: pointer;
+      }
+
+      .mic-button {
+        background: none;
+        border: none;
+        cursor: pointer;
+      }
+
+      .send-button {
+        background: none;
+        border: none;
+        cursor: pointer;
+      }
+
+      .send-button {
+        display: none;
+      }
+
+      .ph-duotone {
+        font-size: 28px;
+      }
+
+      .feedback-button {
+        color: darkgray;
+      }
+
+      .feedback-button:hover {
+        color: #000;
+      }
+    </style>
+  </head>
+  <body class="d-flex align-items-center justify-content-center">
+    <div class="card chat-container shadow">
+      <div id="messages" class="messages border-bottom"></div>
+      <form id="chat-form" class="d-flex p-2">
+        <input
+          type="text"
+          id="user-input"
+          placeholder="Digite sua mensagem..."
+          class="form-control"
+          required
+          autofocus
+          autocomplete="off"
+        />
+        <button
+          type="button"
+          class="btn- btn-transparent mic-button"
+          id="mic-button"
+        >
+          <i class="ph-duotone ph-microphone"></i>
+        </button>
+        <button
+          type="submit"
+          class="btn- btn-transparent send-button"
+          id="send-button"
+        >
+          <i class="ph-duotone ph-paper-plane-right"></i>
+        </button>
+      </form>
+    </div>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+    <script>
+      const form = document.getElementById("chat-form");
+      const messagesContainer = document.getElementById("messages");
+      const userInput = document.getElementById("user-input");
+      const micButton = document.getElementById("mic-button");
+      const sendButton = document.getElementById("send-button");
+      let recognition;
+
+      // Verifica se o navegador suporta reconhecimento de voz
+      if (
+        "SpeechRecognition" in window ||
+        "webkitSpeechRecognition" in window
+      ) {
+        recognition = new (window.SpeechRecognition ||
+          window.webkitSpeechRecognition)();
+        recognition.lang = "pt-BR";
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onstart = () => {
+          micButton.disabled = true; // Desabilita o botão enquanto reconhece
+        };
+
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          userInput.value = transcript;
+          userInput.focus();
+          form.dispatchEvent(new Event("submit"));
+        };
+
+        recognition.onend = () => {
+          micButton.disabled = false; // Habilita o botão após o reconhecimento
+        };
+
+        recognition.onerror = (event) => {
+          console.error("Erro no reconhecimento de voz: ", event.error);
+          micButton.disabled = false; // Habilita o botão em caso de erro
+        };
+      } else {
+        console.log("Este navegador não suporta reconhecimento de voz.");
+      }
+
+      window.onload = function () {
+        userInput.focus();
+      };
+
+      micButton.addEventListener("click", () => {
+        if (recognition) {
+          recognition.start();
+        }
+      });
+
+      userInput.addEventListener("input", () => {
+        if (userInput.value.trim()) {
+          sendButton.style.display = "block"; // Exibe o botão de enviar
+          micButton.style.display = "none"; // Esconde o botão de microfone
+        } else {
+          sendButton.style.display = "none"; // Esconde o botão de enviar
+          micButton.style.display = "block"; // Exibe o botão de microfone
+        }
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const userMessage = userInput.value;
+
+        // Adiciona a mensagem do usuário na interface
+        addMessage(userMessage, "user");
+
+        // Reseta o campo de input e botão de envio
+        resetInput();
+
+        // Envia a mensagem do usuário para o backend
+        await submitMessage(userMessage);
+      });
+
+      function resetInput() {
+        userInput.value = "";
+        sendButton.style.display = "none";
+        micButton.style.display = "block";
+        userInput.focus();
+      }
+
+      function addMessage(botMessage, sender) {
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message shadow-sm ${sender}`;
+        messageDiv.textContent = botMessage;
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+
+      function addMessageWithFeedback(
+        botMessage,
+        userMessage,
+        category,
+        sender
+      ) {
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message shadow-sm ${sender}`;
+        messageDiv.textContent = botMessage;
+
+        // Criar botões de feedback
+        const feedbackDiv = document.createElement("div");
+        feedbackDiv.className = "feedback-buttons mt-3";
+
+        const likeButton = document.createElement("button");
+        likeButton.className = "btn-transparent feedback-button";
+        likeButton.innerHTML = '<i class="ph-duotone ph-thumbs-up"></i>';
+        likeButton.onclick = () => {
+          handleFeedback(true, userMessage, category);
+          likeButton.style.color = "green";
+        };
+
+        const dislikeButton = document.createElement("button");
+        dislikeButton.className = "btn-transparent feedback-button";
+        dislikeButton.innerHTML = '<i class="ph-duotone ph-thumbs-down"></i>';
+        dislikeButton.onclick = () => {
+          handleFeedback(false, userMessage, category);
+          dislikeButton.style.color = "red";
+        };
+
+        feedbackDiv.appendChild(likeButton);
+        feedbackDiv.appendChild(dislikeButton);
+
+        messageDiv.appendChild(feedbackDiv);
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+
+      async function submitMessage(userMessage) {
+        try {
+          // Exibe indicador de digitação
+          const typingIndicator = document.createElement("div");
+          typingIndicator.className = "typing-indicator py-1 px-3";
+          typingIndicator.innerHTML =
+            "<div class='dot'></div><div class='dot'></div><div class='dot'></div>";
+          messagesContainer.appendChild(typingIndicator);
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+          // Envia a mensagem do usuário para a rota "/atendimento"
+          const response = await fetch("/atendimento", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ userMessage }),
+          });
+
+          // Recebe a resposta do servidor
+          const data = await response.json();
+          const botMessage = data.botMessage;
+          const category = data.category;
+
+          // Remove indicador de digitação
+          messagesContainer.removeChild(typingIndicator);
+
+          // Adiciona a resposta do bot
+          addMessageWithFeedback(botMessage, userMessage, category, "gpt");
+        } catch (error) {
+          console.error("Erro ao enviar mensagem:", error);
+        }
+      }
+
+      async function handleFeedback(isCorrect, userMessage, category) {
+        try {
+          const response = await fetch("/feedback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ isCorrect, userMessage, category }),
+          });
+          const data = await response.json();
+          console.log("Feedback recebido:", data);
+
+          Toastify({
+            text: "Feedback enviado com sucesso!",
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+          }).showToast();
+        } catch (error) {
+          console.error("Erro ao enviar feedback:", error);
+          Toastify({
+            text: "Erro ao enviar feedback. Tente novamente.",
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "linear-gradient(to right, #ff5f6d, #ffc371)",
+          }).showToast();
+        }
+      }
+    </script>
+  </body>
+</html>

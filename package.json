@@ -1,0 +1,25 @@
+{
+  "name": "assistante-virtual",
+  "version": "1.0.0",
+  "description": "Assistante Virtual",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "wagner fillio",
+  "license": "MIT",
+  "dependencies": {
+    "body-parser": "^1.20.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "mongoose": "^8.7.2",
+    "node-nlp": "^4.27.0",
+    "openai": "^4.68.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  }
+}
